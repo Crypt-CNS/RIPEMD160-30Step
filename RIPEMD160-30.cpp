@@ -209,6 +209,31 @@ void RIPEMD160::generateAccurateEXP(){
 	}
 }
 
+unsigned int RIPEMD160::getRandWord(unsigned int times){
+	if (times == 0){
+		srand(time(NULL));
+		for (int i = 0; i<16; i++){
+			word[i] = getRand();
+		}
+		cout << "Restart generating random words" << endl;
+	}
+	else{
+		for (int i = 0; i<16; i++){
+			word[i] = getRand() + preWord[i];
+		}
+	}
+
+	for (int i = 0; i<16; i++){
+		preWord[i] = word[i];
+	}
+
+	if (times != 0xffffffff){
+		return times + 1;
+	}
+	else
+		return 0;
+}
+
 double RIPEMD160::getRange(unsigned int number){
 	if (number == 0){
 		return 0;
@@ -1613,7 +1638,7 @@ bool RIPEMD160::modifyRound2(){
 
 void RIPEMD160::start(int testTimes){
 	bool flag = false;
-	srand(time(NULL));
+	unsigned int randomCount = 0;
 
 	unsigned int timeCount[32][10];
 	for (int i = 0; i < 32; i++){
@@ -1635,9 +1660,7 @@ void RIPEMD160::start(int testTimes){
 		}
 
 		while (flag == false){
-			for (int i = 0; i < 16; i++){
-				word[i] = getRand();
-			}
+			randomCount = getRandWord(randomCount);
 			flag = modifyRound1();
 
 			if (flag == true){
@@ -1649,12 +1672,9 @@ void RIPEMD160::start(int testTimes){
 				}
 			}
 		}
-		/*for (int i = 0; i < 16; i++){
-			cout << hex << word[i] << endl;
-		}*/
 
 		int end = 23;
-		unsigned int T1[32], T2[32];//储存
+		unsigned int T1[32], T2[32];
 		cout << endl << "Check times:" << endl;
 
 		for (int i = 0; i < end; i++){
@@ -1699,7 +1719,6 @@ void RIPEMD160::start(int testTimes){
 			cout << endl;
 		}
 		cout << "Total running times: 2^{" << total << "}";
-		//outFiles << "Probability: 2^{-" << total << "}" << endl;;
 		/////
 
 		computeHash(0, end);
@@ -1719,7 +1738,8 @@ void RIPEMD160::start(int testTimes){
 
 		unsigned int in = 0, out = 0, t;
 		bool ff = true;
-		//求差分Q[10,11,12,13,14,15][in,out]
+		
+		//Verify the propagation of the modular difference
 		for (int i = 10; i < end; i++){
 			if (i < 16){
 				t = LL(T1[i - 5], 10) + ONX(T1[i - 1], T1[i - 2], LL(T1[i - 3], 10)) + word[RI[0][i]] + RC[0];
@@ -1727,22 +1747,12 @@ void RIPEMD160::start(int testTimes){
 				if (i == 10){
 					in += EXP[24];
 				}
-				out = LL(t + in, RS[0][i]) - LL(t, RS[0][i]);
 			}
 			else if (i >= 16 && i < 32){
 				t = LL(T1[i - 5], 10) + IFZ(T1[i - 1], T1[i - 2], LL(T1[i - 3], 10)) + word[RI[0][i]] + RC[1];
 				in = LL(T2[i - 5], 10) + IFZ(T2[i - 1], T2[i - 2], LL(T2[i - 3], 10)) - IFZ(T1[i - 1], T1[i - 2], LL(T1[i - 3], 10)) - LL(T1[i - 5], 10);
-				out = LL(t + in, RS[1][i - 16]) - LL(t, RS[1][i - 16]);
 			}
-
-			//out = T2[i] - LL(T2[i - 4], 10) - (T1[i] - LL(T1[i - 4], 10));
-
-			cout << "Q" << i << endl;
-			cout << hex << "out:" << out << endl;
-			cout << hex << "in:" << in << endl;
 			out = (T2[i] - T1[i]) - LL(T2[i - 4], 10) + LL(T1[i - 4], 10);
-			cout << hex << "out:" << out << endl;
-			cout << endl;
 
 			if (in != this->in[i] || out != this->out[i]){
 				cout << "WRONG IN OUT!" << endl;
@@ -1797,7 +1807,7 @@ void RIPEMD160::startTestRightBranch(int testTimes){
 	int min = 0x7fffffff;
 	double m[10] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 };
 
-	srand(time(NULL));
+	unsigned int randomCount = 0;
 	unsigned long long times = 0;
 	
 	unsigned int timeCount[32][10];
@@ -1807,15 +1817,11 @@ void RIPEMD160::startTestRightBranch(int testTimes){
 	}
 
 	for (int k = 0; k < testTimes; k++){
-		cout << dec << k << endl;
-
 		flag = false;
 		times = 0;
 		while (flag == false){
 			times++;
-			for (int i = 0; i < 16; i++){
-				word[i] = getRand();
-			}
+			randomCount = getRandWord(randomCount);
 
 			//randomly generate Y[18],Y[19],Y[20],Y[21],Y[22]
 			for (int i = 0; i < 5; i++){
@@ -1849,8 +1855,8 @@ void RIPEMD160::startTestRightBranch(int testTimes){
 			min = integer / 10;
 		}
 		timeCount[integer/10][integer%10]++;
-		cout << dec << "Index:"<<index << endl;
-		cout << dec << "timeCount[" << integer / 10 << "," << integer % 10<<"]: " << timeCount[integer / 10][integer % 10] << endl;
+		cout << dec << k << ": " << "The number of the random cases to obtain the result: 2^" << index << endl;
+		//cout << dec << "timeCount[" << integer / 10 << "," << integer % 10<<"]: " << timeCount[integer / 10][integer % 10] << endl;
 		//outFile << hex << "Running times(HEX): "<<setw(8)<<times << ".\t";
 		//outFile << dec << "Therefore, the probability is about 2^{-" << getRange(times) << "}." << endl;
 	}
@@ -1928,18 +1934,6 @@ bool RIPEMD160::testRightBranch(){
 		}
 
 		if (checkQ(Q[i], i, RS[1][i - 16]) == false){
-
-			/*cout << hex << "Q[i]: ";
-			toBinary(LL(Q[i],RS[1][i-16]));
-
-			cout << hex << "Y[i-4]: ";
-			toBinary(LL(Y[i-4], 10));
-
-			cout << hex << "Y[i]: " ;
-			toBinary(Y[i]);*/
-
-			//cout << dec << i << endl;
-			//system("pause");
 			return false;
 		}
 	}
@@ -2002,7 +1996,7 @@ inline bool RIPEMD160::checkY27(){
 
 void RIPEMD160::startTestLeftBranch(int testTimes){
 	bool flag = false;
-	srand(time(NULL));
+	unsigned int randomCount = 0;
 	unsigned int times = 0;
 
 	double index = 31;
@@ -2020,12 +2014,11 @@ void RIPEMD160::startTestLeftBranch(int testTimes){
 	for (int k = 0; k < testTimes; k++){
 		flag = false;
 		times = 0;
-		cout << dec << k << endl;
+		//cout << "Testing times: " <<dec << k <<endl;
 		while (flag == false){
 			times++;
-			for (int i = 0; i < 16; i++){
-				word[i] = getRand();
-			}
+			randomCount = getRandWord(randomCount);
+
 			if (testLeftBranchUntilX26() == true){
 				flag = true;
 			}
@@ -2040,8 +2033,8 @@ void RIPEMD160::startTestLeftBranch(int testTimes){
 			min = integer / 10;
 		}
 		timeCount[integer / 10][integer % 10]++;
-		cout << dec << "Index:" << index << endl;
-		cout << dec << "timeCount[" << integer / 10 << "," << integer % 10 << "]: " << timeCount[integer / 10][integer % 10] << endl;
+		cout << dec <<k<<": "<< "The number of the random cases to obtain the result: 2^" << index << endl;
+		//cout << dec << "timeCount[" << integer / 10 << "," << integer % 10 << "]: " << timeCount[integer / 10][integer % 10] << endl;
 	}
 
 	ofstream outFile("leftRunningTimes.txt", ios::app);
