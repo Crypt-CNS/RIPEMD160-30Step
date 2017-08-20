@@ -26,6 +26,7 @@ const unsigned int EXP[32] = {  0x1, 0x2, 0x4, 0x8,
 class RIPEMD160{
 private:
 	unsigned int word[WORD_NUM];//message word
+	unsigned int preWord[WORD_NUM];
 	unsigned int LIV[5];//IV in the left branch
 	unsigned int RIV[5];//IV in the right branch
 	unsigned int X[36];//Internal state in the left branch
@@ -130,8 +131,7 @@ public:
 	inline bool checkY27();
 
 	void generate();//generate a good Y-1.
+
+	unsigned int getRandWord(unsigned int times);
 };
 #endif
-
-
-
